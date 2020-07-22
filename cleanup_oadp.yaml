@@ -1,0 +1,14 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Delete CR
+    shell: oc delete -f deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
+  - name: Delete CRD
+    shell: oc delete -f deploy/crds/konveyor.openshift.io_veleros_crd.yaml   
+  - name: Delete deployment, role, role binding, service account and cluster role binding
+    shell: oc delete -f deploy/
+  - name: Delete oadp-operator namespace
+    shell: oc delete namespace oadp-operator
+  - name: Delete Velero CRDs
+    shell: oc delete crd $(oc get crds | grep velero.io | awk -F ' ' '{print $1}')
+
