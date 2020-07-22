@@ -1,0 +1,49 @@
+---
+- hosts: localhost
+  vars:
+    registry_url: quay.io/davidlu/oadp-operator:latest
+    credentials_file_path: ~/.aws/credentials
+    bucket_name: davidlu-5f3e46ba0dc70309b91132c3db936347
+    backup_storage_region: us-east-2
+    volume_snapshot_region: us-west-2
+
+  tasks:
+  # Clone repo
+  - name: Clone operator
+    shell: git clone https://github.com/konveyor/oadp-operator.git
+  - name: Enter repo
+    shell: cd oadp-operator
+
+  # Build and use operator image
+  - name: Build operator image
+    shell: podman build -f build/Dockerfile . -t oadp-operator:latest
+    args:
+      chdir: oadp-operator
+  - name: Push image to public registry 
+    shell: podman push {{ registry_url }}
+  - name: Update operator.yaml with registry URL
+    shell: sed -i 's|quay.io/konveyor/oadp-operator:latest|{{ registry_url }}|g' oadp-operator/deploy/operator.yaml
+
+  # Install operator
+  - name: Create oadp-operator namespace
+    shell: oc create namespace oadp-operator
+  - name: Switch to the oadp-operator namespace 
+    shell: oc project oadp-operator
+  - name: Create secret for the cloud provider credentials to be used
+    shell: oc create secret generic cloud-credentials --namespace oadp-operator --from-file cloud={{ credentials_file_path }}
+  - name: Create the deployment, role, role binding, service account and cluster role binding
+    shell: oc create -f oadp-operator/deploy/
+  - name: Deploy the Velero custom resource definition
+    shell: oc create -f oadp-operator/deploy/crds/konveyor.openshift.io_veleros_crd.yaml   
+  - name: Deploy the Velero custom resource 
+    shell: oc create -f oadp-operator/deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
+  - name: Make Velero CLI directly configured for oadp-operator namespace
+    shell: velero client config set namespace=oadp-operator
+
+  # Set correct bucket name and regions
+  - name: Set bucket name 
+    shell: sed -i 's|myBucket|{{ bucket_name }}|g' oadp-operator/deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
+  - name: Set backup storage location region 
+    shell: sed -i 's|us-east-1|{{ backup_storage_region }}|g' oadp-operator/deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
+  - name: Set volume snapshot location region 
+    shell: sed -i 's|us-west-2|{{ volume_snapshot_region }}|g' oadp-operator/deploy/crds/konveyor.openshift.io_v1alpha1_velero_cr.yaml
