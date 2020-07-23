@@ -2,11 +2,11 @@
 
 Before running the scripts,
 
-1. Login to the OpenShift cluster: 
+1. Log in to the OpenShift cluster: 
 ```
 oc login
 ```
-2. Login to the image registry. For Quay, do:
+2. Log in to the image registry. For Quay, do:
 ```
 docker login quay.io
 ```

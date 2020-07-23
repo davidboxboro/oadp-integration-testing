@@ -11,4 +11,3 @@
     shell: oc delete namespace oadp-operator
   - name: Delete Velero CRDs
     shell: oc delete crd $(oc get crds | grep velero.io | awk -F ' ' '{print $1}')
-
